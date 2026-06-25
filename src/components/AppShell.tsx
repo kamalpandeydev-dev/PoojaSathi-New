@@ -1,12 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { useLang, LangToggle } from "../lib/i18n";
+import { useAuth } from "../lib/auth";
 import { LotusIcon } from "./SpiritualArt";
 import { InstallButton } from "./InstallPWA";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { lang } = useLang();
+  const { profile, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -36,24 +38,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* Role indicator */}
-          {(isYajmaan || isPandit) && (
+          {/* Role + user chip */}
+          {profile && (isYajmaan || isPandit) && (
             <div
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${isYajmaan ? "bg-saffron-100 text-saffron-800" : "bg-maroon-100 text-maroon-800"}`}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold max-w-[180px] truncate ${isYajmaan ? "bg-saffron-100 text-saffron-800" : "bg-maroon-100 text-maroon-800"}`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-              {isYajmaan
-                ? lang === "hi"
-                  ? "यजमान मोड"
-                  : "Yajmaan Mode"
-                : lang === "hi"
-                  ? "पंडित मोड"
-                  : "Pandit Mode"}
+              <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+              <span className="truncate">
+                {profile.full_name.split(" ")[0]}
+              </span>
             </div>
           )}
 
           <div className="flex items-center gap-2">
-            {/* Install button — only shows when PWA prompt is available */}
             <InstallButton />
             <LangToggle />
             <Link
@@ -62,6 +59,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               {lang === "hi" ? "सूची" : "Library"}
             </Link>
+            {/* Sign out */}
+            {profile && (
+              <button
+                onClick={signOut}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-temple-muted hover:bg-beige-100 hover:text-rose-600 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               onClick={() => setMobileOpen((v) => !v)}
               className="sm:hidden p-1.5 rounded-lg hover:bg-beige-100 text-temple-ink"
@@ -78,19 +85,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {mobileOpen && (
           <div className="sm:hidden border-t border-temple-border/60 bg-temple-bg p-3 space-y-1 animate-slide-up">
-            <MLink to="/" label={lang === "hi" ? "होम" : "Home"} />
-            <MLink
-              to="/yajmaan"
-              label={lang === "hi" ? "यजमान डैशबोर्ड" : "Yajmaan Dashboard"}
-            />
-            <MLink
-              to="/pandit"
-              label={lang === "hi" ? "पंडित डैशबोर्ड" : "Pandit Dashboard"}
-            />
+            {isYajmaan && (
+              <MLink
+                to="/yajmaan"
+                label={lang === "hi" ? "मेरी पूजाएँ" : "My Poojas"}
+              />
+            )}
+            {isYajmaan && (
+              <MLink
+                to="/yajmaan/book"
+                label={lang === "hi" ? "नई पूजा बुक करें" : "Book a Pooja"}
+              />
+            )}
+            {isPandit && (
+              <MLink
+                to="/pandit"
+                label={lang === "hi" ? "पंडित डैशबोर्ड" : "Pandit Dashboard"}
+              />
+            )}
             <MLink
               to="/library"
               label={lang === "hi" ? "सामग्री सूची" : "Samagri Library"}
             />
+            {profile && (
+              <button
+                onClick={signOut}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />{" "}
+                {lang === "hi" ? "साइन आउट" : "Sign Out"}
+              </button>
+            )}
           </div>
         )}
       </header>

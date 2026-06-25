@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabase, type PanditRow } from "../../lib/supabase";
 import { useLang } from "../../lib/i18n";
+import { useAuth } from "../../lib/auth";
 import { pushToast } from "../../components/ui";
 import { FloralDivider, KalashIcon } from "../../components/SpiritualArt";
 
@@ -37,6 +38,7 @@ const COVER_OPTS = [
 
 export function BookPoojaPage() {
   const { lang } = useLang();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [pandits, setPandits] = useState<PanditRow[]>([]);
@@ -45,10 +47,10 @@ export function BookPoojaPage() {
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
   const [form, setForm] = useState({
-    yajmaan_name: "",
+    yajmaan_name: profile?.full_name ?? "",
     yajmaan_name_en: "",
-    yajmaan_phone: "",
-    yajmaan_city: "",
+    yajmaan_phone: profile?.phone ?? "",
+    yajmaan_city: profile?.city ?? "",
     pandit_id: "",
     puja_type: "सत्यनारायण कथा",
     puja_date: tomorrow,

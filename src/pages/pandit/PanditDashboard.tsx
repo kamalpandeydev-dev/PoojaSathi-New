@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ClipboardList, RefreshCw, BookOpen } from "lucide-react";
 import { supabase, type BookingRow } from "../../lib/supabase";
 import { useLang } from "../../lib/i18n";
+import { useAuth } from "../../lib/auth";
 import { FloralDivider } from "../../components/SpiritualArt";
 
 const PANDIT_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
 export function PanditDashboard() {
   const { lang } = useLang();
+  const { profile: _p } = useAuth();
+  void _p;
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
 

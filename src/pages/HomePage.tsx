@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useLang } from "../lib/i18n";
 import { FloralDivider } from "../components/SpiritualArt";
+import { InstallBanner } from "../components/InstallPWA";
 
 export function HomePage() {
   const { lang } = useLang();
@@ -29,6 +30,9 @@ export function HomePage() {
             : "Book pooja → Pandit sends samagri list → You mark preparation"}
         </p>
       </section>
+
+      {/* ── INSTALL CTA ──────────────────────────────────────────────────── */}
+      <InstallBanner />
 
       {/* ── TWO BIG ROLE BUTTONS ─────────────────────────────────────────── */}
       <section className="px-4 pb-6 max-w-2xl mx-auto">
