@@ -11,10 +11,11 @@ import {
   ArrowRight,
   CheckCircle2,
   RefreshCw,
+  KeyRound,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth, type UserRole } from "../lib/auth";
-import { requestOtp, verifyOtp } from "../lib/otp";
+import { requestOtp, verifyOtp, lookupEmailByPhone } from "../lib/otp";
 import { pushToast } from "../components/ui";
 import { useLang } from "../lib/i18n";
 import { LotusIcon } from "../components/SpiritualArt";
@@ -131,7 +132,6 @@ function SignUpForm({ role }: { role: UserRole }) {
   const { refreshProfile } = useAuth();
   const [step, setStep] = useState<"form" | "otp">("form");
   const [busy, setBusy] = useState(false);
-  const [demoOtp, setDemoOtp] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [err, setErr] = useState("");
@@ -203,7 +203,6 @@ function SignUpForm({ role }: { role: UserRole }) {
       setErr(res.error || "OTP भेजने में विफल");
       return;
     }
-    setDemoOtp(res.otp ?? "");
     setStep("otp");
   }
 
@@ -304,17 +303,6 @@ function SignUpForm({ role }: { role: UserRole }) {
             <span className="font-bold text-maroon-800">{form.phone}</span> पर
             OTP भेजा गया
           </p>
-          {/* Demo mode: show OTP inline */}
-          {demoOtp && (
-            <div className="mt-3 inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gold-50 border-2 border-gold-300">
-              <span className="text-xs font-semibold text-gold-700">
-                Demo OTP:
-              </span>
-              <span className="font-mono font-extrabold text-xl text-maroon-900 tracking-[0.2em]">
-                {demoOtp}
-              </span>
-            </div>
-          )}
         </div>
 
         <OtpBoxes value={otpCode} onChange={setOtpCode} />
@@ -531,6 +519,7 @@ function LoginForm() {
   const [err, setErr] = useState("");
   const [id, setId] = useState(""); // phone or email
   const [pwd, setPwd] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
 
   async function login() {
     setErr("");
@@ -562,6 +551,14 @@ function LoginForm() {
 
     await refreshProfile();
     pushToast("स्वागत है! 🙏");
+  }
+
+  if (showForgot) {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <ForgotPassword onClose={() => setShowForgot(false)} />
+      </div>
+    );
   }
 
   return (
@@ -637,6 +634,231 @@ function LoginForm() {
           </>
         )}
       </button>
+
+      <button
+        onClick={() => setShowForgot(true)}
+        className="w-full text-center text-xs text-saffron-700 font-semibold hover:text-saffron-800 pt-1"
+      >
+        पासवर्ड भूल गए? / Forgot Password?
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORGOT PASSWORD
+// ═══════════════════════════════════════════════════════════════════════════════
+function ForgotPassword({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState<"phone" | "otp" | "reset">("phone");
+  const [phone, setPhone] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(false);
+
+  async function sendOtp() {
+    setErr("");
+    if (!phone.trim() || phone.replace(/\D/g, "").length < 10) {
+      setErr("सही 10-अंकी मोबाइल नंबर दर्ज करें");
+      return;
+    }
+    setBusy(true);
+    const res = await requestOtp(phone.trim(), undefined, "reset");
+    setBusy(false);
+    if (!res.ok) {
+      setErr(res.error || "OTP भेजने में विफल");
+      return;
+    }
+    setStep("otp");
+  }
+
+  async function verifyAndReset() {
+    setErr("");
+    if (!otpCode.trim()) {
+      setErr("OTP दर्ज करें");
+      return;
+    }
+    if (newPwd.length < 6) {
+      setErr("पासवर्ड कम से कम 6 अक्षर का होना चाहिए");
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setErr("पासवर्ड मेल नहीं खाता");
+      return;
+    }
+    setBusy(true);
+
+    // 1. Verify OTP via Twilio
+    const v = await verifyOtp(
+      phone.trim(),
+      otpCode.replace(/\s/g, ""),
+      "reset",
+    );
+    if (!v.ok) {
+      setErr(v.error || "OTP गलत है");
+      setBusy(false);
+      return;
+    }
+
+    // 2. Look up the auth email for this phone
+    const { email, error: lookupErr } = await lookupEmailByPhone(phone.trim());
+    if (lookupErr || !email) {
+      setErr(lookupErr || "इस नंबर पर कोई खाता नहीं मिला");
+      setBusy(false);
+      return;
+    }
+
+    // 3. Update the user's password via Supabase admin reset is not possible
+    //    from the client. Instead, sign in with the recovered email using
+    //    a one-time password update flow: we use updateUser after a fresh
+    //    sign-in is not possible without the old password. So we use the
+    //    secure password reset via a service-role edge function.
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, newPassword: newPwd }),
+      },
+    );
+    const data = await res.json();
+    setBusy(false);
+
+    if (!res.ok || !data.ok) {
+      setErr(data.error || "पासवर्ड अपडेट करने में विफल");
+      return;
+    }
+
+    setDone(true);
+  }
+
+  if (done) {
+    return (
+      <div className="space-y-4 text-center">
+        <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto" />
+        <p className="text-sm text-temple-ink">
+          पासवर्ड सफलतापूर्वक बदल गया। अब लॉगिन करें।
+        </p>
+        <button onClick={onClose} className="ps-btn-primary w-full">
+          लॉगिन पर वापस
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <KeyRound className="w-8 h-8 text-saffron-600 mx-auto mb-2" />
+        <h3 className="font-display text-lg text-maroon-900">पासवर्ड रीसेट</h3>
+        <p className="text-xs text-temple-muted">
+          अपना मोबाइल नंबर दर्ज करें — OTP इसी पर आएगा
+        </p>
+      </div>
+
+      {step === "phone" && (
+        <>
+          <Field label="मोबाइल नंबर / Mobile" required>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-temple-muted pointer-events-none" />
+              <input
+                type="tel"
+                inputMode="numeric"
+                placeholder="98XXXXXXXX"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setErr("");
+                }}
+                className="w-full rounded-xl border border-temple-border bg-white/90 py-3 pl-10 pr-3 text-sm text-temple-ink placeholder:text-temple-muted/60 focus:border-saffron-400 focus:ring-2 focus:ring-saffron-100 outline-none"
+              />
+            </div>
+          </Field>
+
+          {err && <p className="text-xs text-rose-600">{err}</p>}
+
+          <button
+            onClick={sendOtp}
+            disabled={busy}
+            className="ps-btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "OTP भेजें"}
+          </button>
+        </>
+      )}
+
+      {step === "otp" && (
+        <>
+          <p className="text-sm text-temple-muted text-center">
+            <span className="font-bold text-maroon-800">{phone}</span> पर OTP
+            भेजा गया
+          </p>
+          <OtpBoxes value={otpCode} onChange={setOtpCode} />
+
+          <Field label="नया पासवर्ड / New Password" required>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-temple-muted pointer-events-none" />
+              <input
+                type={showPwd ? "text" : "password"}
+                placeholder="••••••••"
+                value={newPwd}
+                onChange={(e) => {
+                  setNewPwd(e.target.value);
+                  setErr("");
+                }}
+                className="w-full rounded-xl border border-temple-border bg-white/90 py-3 pl-10 pr-10 text-sm text-temple-ink placeholder:text-temple-muted/60 focus:border-saffron-400 focus:ring-2 focus:ring-saffron-100 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-temple-muted hover:text-temple-ink"
+              >
+                {showPwd ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </Field>
+
+          <Field label="पासवर्ड की पुष्टि करें / Confirm" required>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-temple-muted pointer-events-none" />
+              <input
+                type={showPwd ? "text" : "password"}
+                placeholder="••••••••"
+                value={confirmPwd}
+                onChange={(e) => {
+                  setConfirmPwd(e.target.value);
+                  setErr("");
+                }}
+                className="w-full rounded-xl border border-temple-border bg-white/90 py-3 pl-10 pr-3 text-sm text-temple-ink placeholder:text-temple-muted/60 focus:border-saffron-400 focus:ring-2 focus:ring-saffron-100 outline-none"
+              />
+            </div>
+          </Field>
+
+          {err && <p className="text-xs text-rose-600">{err}</p>}
+
+          <button
+            onClick={verifyAndReset}
+            disabled={busy}
+            className="ps-btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {busy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              "पासवर्ड बदलें"
+            )}
+          </button>
+        </>
+      )}
     </div>
   );
 }

@@ -1,37 +1,3 @@
-/*
-# Auth: user_profiles + otp_verifications
-
-## Purpose
-Enable role-based login/signup for PoojaSathi.
-- Pandits and Yajmaans register separately; their role is stored here.
-- OTP verification uses a DB table (no SMS gateway required in demo mode).
-
-## New Tables
-
-### user_profiles
-One row per Supabase auth user.
-- id          : references auth.users(id)
-- role        : 'pandit' | 'yajmaan'
-- full_name   : display name
-- phone       : mobile number (used for OTP)
-- email       : optional
-- location_text, city, state, latitude, longitude : address fields
-- pandit_id   : FK → pandits (only for pandit role)
-- verified    : true once OTP confirmed
-
-### otp_verifications
-6-digit codes for sign-up / login verification.
-- phone / email : target
-- otp_code      : 6-digit string
-- purpose       : 'signup' | 'login'
-- used          : consumed flag
-- expires_at    : now() + 10 minutes
-
-## Security
-- user_profiles: RLS on, owner-scoped (auth.uid() = id)
-- otp_verifications: RLS on, anon can insert+select+update (needed for verify flow before auth)
-*/
-
 -- ─── user_profiles ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS user_profiles (
   id            uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -81,7 +47,7 @@ CREATE TABLE IF NOT EXISTS otp_verifications (
   phone      text,
   email      text,
   otp_code   text NOT NULL,
-  purpose    text NOT NULL DEFAULT 'signup' CHECK (purpose IN ('signup','login')),
+  purpose    text NOT NULL DEFAULT 'signup' CHECK (purpose IN ('signup','login','reset')),
   used       boolean NOT NULL DEFAULT false,
   expires_at timestamptz NOT NULL DEFAULT (now() + interval '10 minutes'),
   created_at timestamptz NOT NULL DEFAULT now()
