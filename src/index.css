@@ -16,13 +16,24 @@
   body {
     @apply bg-temple-bg text-temple-ink font-sans antialiased;
     background-image:
-      radial-gradient(circle at 12% -10%, rgba(243, 189, 25, 0.10), transparent 40%),
-      radial-gradient(circle at 88% 8%, rgba(205, 39, 60, 0.05), transparent 38%);
+      radial-gradient(
+        circle at 12% -10%,
+        rgba(243, 189, 25, 0.1),
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 88% 8%,
+        rgba(205, 39, 60, 0.05),
+        transparent 38%
+      );
     background-attachment: fixed;
     text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     @apply font-display tracking-tight;
   }
 
@@ -37,7 +48,9 @@
 
   /* Respect reduced motion preference */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -88,14 +101,29 @@
   }
 
   .ps-shimmer {
-    background: linear-gradient(90deg, rgba(228, 200, 144, 0.0) 0%, rgba(243, 189, 25, 0.18) 50%, rgba(228, 200, 144, 0.0) 100%);
+    background: linear-gradient(
+      90deg,
+      rgba(228, 200, 144, 0) 0%,
+      rgba(243, 189, 25, 0.18) 50%,
+      rgba(228, 200, 144, 0) 100%
+    );
     background-size: 200% 100%;
   }
 
   .ps-mandala {
     background-image:
-      radial-gradient(circle at 50% 50%, transparent 38%, rgba(243, 189, 25, 0.05) 39%, transparent 40%),
-      radial-gradient(circle at 50% 50%, transparent 28%, rgba(205, 125, 6, 0.04) 29%, transparent 30%);
+      radial-gradient(
+        circle at 50% 50%,
+        transparent 38%,
+        rgba(243, 189, 25, 0.05) 39%,
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 50% 50%,
+        transparent 28%,
+        rgba(205, 125, 6, 0.04) 29%,
+        transparent 30%
+      );
   }
 }
 

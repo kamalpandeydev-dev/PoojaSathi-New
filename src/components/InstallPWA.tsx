@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Download, Share, X } from 'lucide-react';
-import { usePWAInstall } from '../lib/usePWAInstall';
-import { useLang } from '../lib/i18n';
+import { useState } from "react";
+import { Download, Share, X } from "lucide-react";
+import { usePWAInstall } from "../lib/usePWAInstall";
+import { useLang } from "../lib/i18n";
 
 // ─── Full banner — shows at top of HomePage ───────────────────────────────────
 export function InstallBanner() {
@@ -13,11 +13,14 @@ export function InstallBanner() {
   if (!canInstall) return null;
 
   async function handleInstall() {
-    if (isIOS) { setShowIOSGuide(true); return; }
+    if (isIOS) {
+      setShowIOSGuide(true);
+      return;
+    }
     setInstalling(true);
     const result = await install();
     setInstalling(false);
-    if (result === 'dismissed') dismiss();
+    if (result === "dismissed") dismiss();
   }
 
   return (
@@ -32,12 +35,12 @@ export function InstallBanner() {
           {/* Text */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-temple-ink">
-              {lang === 'hi' ? 'पूजासाथी इंस्टॉल करें' : 'Install PoojaSathi'}
+              {lang === "hi" ? "पूजासाथी इंस्टॉल करें" : "Install PoojaSathi"}
             </p>
             <p className="text-xs text-temple-muted leading-snug">
-              {lang === 'hi'
-                ? 'होम स्क्रीन पर जोड़ें — ऑफलाइन भी काम करेगा'
-                : 'Add to home screen — works offline too'}
+              {lang === "hi"
+                ? "होम स्क्रीन पर जोड़ें — ऑफलाइन भी काम करेगा"
+                : "Add to home screen — works offline too"}
             </p>
           </div>
 
@@ -47,8 +50,12 @@ export function InstallBanner() {
             disabled={installing}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-saffron-500 hover:bg-saffron-600 text-white font-bold text-sm transition-all active:scale-95 shrink-0 shadow-soft disabled:opacity-60"
           >
-            {isIOS ? <Share className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-            {installing ? '...' : (lang === 'hi' ? 'इंस्टॉल' : 'Install')}
+            {isIOS ? (
+              <Share className="w-4 h-4" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {installing ? "..." : lang === "hi" ? "इंस्टॉल" : "Install"}
           </button>
 
           {/* Dismiss */}
@@ -64,38 +71,70 @@ export function InstallBanner() {
 
       {/* iOS Manual Guide */}
       {showIOSGuide && (
-        <div className="fixed inset-0 z-50 bg-maroon-950/70 backdrop-blur-sm flex items-end justify-center p-4" onClick={() => setShowIOSGuide(false)}>
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 bg-maroon-950/70 backdrop-blur-sm flex items-end justify-center p-4"
+          onClick={() => setShowIOSGuide(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-lg text-maroon-900">
-                {lang === 'hi' ? 'iPhone पर इंस्टॉल करें' : 'Install on iPhone'}
+                {lang === "hi" ? "iPhone पर इंस्टॉल करें" : "Install on iPhone"}
               </h3>
-              <button onClick={() => setShowIOSGuide(false)} className="p-1 rounded-lg hover:bg-beige-100">
+              <button
+                onClick={() => setShowIOSGuide(false)}
+                className="p-1 rounded-lg hover:bg-beige-100"
+              >
                 <X className="w-5 h-5 text-temple-muted" />
               </button>
             </div>
             <div className="space-y-3">
               {[
-                { icon: '1️⃣', hi: 'Safari में नीचे "Share" बटन दबाएं', en: 'Tap the "Share" button at the bottom of Safari' },
-                { icon: '2️⃣', hi: '"Add to Home Screen" पर टैप करें', en: 'Scroll down and tap "Add to Home Screen"' },
-                { icon: '3️⃣', hi: '"Add" दबाएं — हो गया! 🎉', en: 'Tap "Add" — done! 🎉' },
+                {
+                  icon: "1️⃣",
+                  hi: 'Safari में नीचे "Share" बटन दबाएं',
+                  en: 'Tap the "Share" button at the bottom of Safari',
+                },
+                {
+                  icon: "2️⃣",
+                  hi: '"Add to Home Screen" पर टैप करें',
+                  en: 'Scroll down and tap "Add to Home Screen"',
+                },
+                {
+                  icon: "3️⃣",
+                  hi: '"Add" दबाएं — हो गया! 🎉',
+                  en: 'Tap "Add" — done! 🎉',
+                },
               ].map((s) => (
-                <div key={s.icon} className="flex items-start gap-3 p-3 rounded-xl bg-beige-50">
+                <div
+                  key={s.icon}
+                  className="flex items-start gap-3 p-3 rounded-xl bg-beige-50"
+                >
                   <span className="text-xl shrink-0">{s.icon}</span>
-                  <p className="text-sm text-temple-ink">{lang === 'hi' ? s.hi : s.en}</p>
+                  <p className="text-sm text-temple-ink">
+                    {lang === "hi" ? s.hi : s.en}
+                  </p>
                 </div>
               ))}
             </div>
             <div className="mt-4 p-3 rounded-xl bg-saffron-50 border border-saffron-200">
               <p className="text-xs text-saffron-900 flex items-center gap-1.5">
                 <Share className="w-3.5 h-3.5 shrink-0" />
-                {lang === 'hi'
-                  ? 'Safari का Share आइकन: नीचे toolbar में box से ऊपर arrow'
-                  : 'Safari Share icon: box with arrow pointing up in the bottom toolbar'}
+                {lang === "hi"
+                  ? "Safari का Share आइकन: नीचे toolbar में box से ऊपर arrow"
+                  : "Safari Share icon: box with arrow pointing up in the bottom toolbar"}
               </p>
             </div>
-            <button onClick={() => { setShowIOSGuide(false); dismiss(); }} className="mt-4 w-full py-2.5 rounded-xl bg-saffron-500 text-white font-bold text-sm hover:bg-saffron-600">
-              {lang === 'hi' ? 'समझ गया' : 'Got it'}
+            <button
+              onClick={() => {
+                setShowIOSGuide(false);
+                dismiss();
+              }}
+              className="mt-4 w-full py-2.5 rounded-xl bg-saffron-500 text-white font-bold text-sm hover:bg-saffron-600"
+            >
+              {lang === "hi" ? "समझ गया" : "Got it"}
             </button>
           </div>
         </div>
@@ -114,16 +153,18 @@ export function InstallButton() {
 
   async function handleInstall() {
     if (isIOS) {
-      alert(lang === 'hi'
-        ? 'Safari में Share बटन → "Add to Home Screen" → Add'
-        : 'In Safari: tap Share → "Add to Home Screen" → Add');
+      alert(
+        lang === "hi"
+          ? 'Safari में Share बटन → "Add to Home Screen" → Add'
+          : 'In Safari: tap Share → "Add to Home Screen" → Add',
+      );
       dismiss();
       return;
     }
     setInstalling(true);
     const result = await install();
     setInstalling(false);
-    if (result === 'dismissed') dismiss();
+    if (result === "dismissed") dismiss();
   }
 
   return (
@@ -131,10 +172,10 @@ export function InstallButton() {
       onClick={handleInstall}
       disabled={installing}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-saffron-400 bg-saffron-50 hover:bg-saffron-100 text-saffron-700 text-xs font-bold transition-all active:scale-95 disabled:opacity-60"
-      title={lang === 'hi' ? 'ऐप इंस्टॉल करें' : 'Install App'}
+      title={lang === "hi" ? "ऐप इंस्टॉल करें" : "Install App"}
     >
       <Download className="w-3.5 h-3.5" />
-      {installing ? '...' : (lang === 'hi' ? 'इंस्टॉल' : 'Install')}
+      {installing ? "..." : lang === "hi" ? "इंस्टॉल" : "Install"}
     </button>
   );
 }
