@@ -12,8 +12,11 @@ function edgeUrl(slug: string): string {
 }
 
 function authHeaders(): Record<string, string> {
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
   return {
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    Authorization: `Bearer ${anon}`,
+    apikey: anon,
     "Content-Type": "application/json",
   };
 }

@@ -1,12 +1,18 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+// const corsHeaders = {
+//   "Access-Control-Allow-Origin": "*",
+//   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+//   "Access-Control-Allow-Headers":
+//     "Content-Type, Authorization, X-Client-Info, Apikey",
+// };
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey",
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Max-Age": "86400",
 };
-
 interface VerifyOtpBody {
   phone: string;
   code: string;
@@ -77,9 +83,10 @@ Deno.serve(async (req: Request) => {
     // Call Twilio Verify API to check the OTP
     const twilioUrl = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/VerificationCheck`;
     const body = new URLSearchParams();
-    body.set("To", normalized);
-    body.set("Code", code);
-
+    // body.set("To", normalized);
+    // body.set("Code", code);
+    body.set("To", normalized.trim());
+    body.set("Code", code.trim());
     const twilioRes = await fetch(twilioUrl, {
       method: "POST",
       headers: {
@@ -88,8 +95,18 @@ Deno.serve(async (req: Request) => {
       },
       body: body.toString(),
     });
-
-    const twilioData = await twilioRes.json();
+    console.log("Verifying Phone:", normalized);
+    console.log("Purpose:", purpose);
+    // const twilioData = await twilioRes.json();
+    const responseText = await twilioRes.text();
+    console.log("Raw Twilio Response:", responseText);
+    const twilioData = JSON.parse(responseText);
+    console.log("========== VERIFY OTP ==========");
+    console.log("Phone:", normalized);
+    console.log("OTP:", code);
+    console.log("Twilio Status Code:", twilioRes.status);
+    console.log("Twilio Response:", JSON.stringify(twilioData));
+    console.log("===============================");
 
     if (!twilioRes.ok || twilioData.status !== "approved") {
       return new Response(

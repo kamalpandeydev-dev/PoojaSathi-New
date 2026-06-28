@@ -229,12 +229,51 @@ function SignUpForm({ role }: { role: UserRole }) {
     // 2. Create Supabase auth user
     const emailToUse =
       form.email.trim() || `${form.phone.replace(/\D/g, "")}@poojasathi.app`;
+    console.log("emailToUse:", emailToUse);
+    console.log("password:", form.password);
+    console.log("role:", role);
+    // const { data: authData, error: authErr } = await supabase.auth.signUp({
+    //   email: emailToUse,
+    //   password: form.password,
+    //   options: { data: { full_name: form.full_name, role } },
+    // });
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: emailToUse,
       password: form.password,
-      options: { data: { full_name: form.full_name, role } },
+      options: {
+        data: {
+          full_name: form.full_name,
+          role,
+        },
+      },
     });
+    console.log("Signup Session:", authData.session);
+    console.log("Signup User:", authData.user);
+    console.log("Signup Error:", authErr);
+    if (authErr || !authData.user) {
+      setErr(authErr?.message ?? "पंजीकरण विफल");
+      setBusy(false);
+      return;
+    }
 
+    /*
+     * IMPORTANT
+     * signUp() is returning session=null.
+     * Explicitly sign in to obtain the JWT.
+    //  */
+    // const { data: loginData, error: loginErr } =
+    //   await supabase.auth.signInWithPassword({
+    //     email: emailToUse,
+    //     password: form.password,
+    //   });
+
+    // if (loginErr || !loginData.session) {
+    //   setErr(loginErr?.message ?? "Login failed after signup");
+    //   setBusy(false);
+    //   return;
+    // }
+    console.log("authData:", authData);
+    console.log("authErr:", authErr);
     if (authErr || !authData.user) {
       setErr(
         authErr?.message === "User already registered"
@@ -246,21 +285,51 @@ function SignUpForm({ role }: { role: UserRole }) {
     }
 
     // 3. Insert user_profile
-    const { error: profileErr } = await supabase.from("user_profiles").insert({
-      id: authData.user.id,
-      role,
-      full_name: form.full_name.trim(),
-      phone: form.phone.trim(),
-      email: form.email || null,
-      location_text: form.location_text || null,
-      city: form.city || null,
-      state: form.state || null,
-      latitude: form.latitude ? Number(form.latitude) : null,
-      longitude: form.longitude ? Number(form.longitude) : null,
-      pandit_id: role === "pandit" ? PANDIT_ID : null,
-      verified: true,
-    });
+    // const { error: profileErr } = await supabase.from("user_profiles").insert({
+    //   id: authData.user.id,
+    //   role,
+    //   full_name: form.full_name.trim(),
+    //   phone: form.phone.trim(),
+    //   email: form.email || null,
+    //   location_text: form.location_text || null,
+    //   city: form.city || null,
+    //   state: form.state || null,
+    //   latitude: form.latitude ? Number(form.latitude) : null,
+    //   longitude: form.longitude ? Number(form.longitude) : null,
+    //   pandit_id: role === "pandit" ? PANDIT_ID : null,
+    //   verified: true,
+    // });
+    //Testing Comment
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
+    console.log("Current session:", session);
+    console.log("Current user:", session?.user);
+    console.log("Current user id:", session?.user?.id);
+    console.log("authData user id:", authData.user.id);
+
+    const { data: profileData, error: profileErr } = await supabase
+      .from("user_profiles")
+      .insert({
+        id: authData.user.id,
+        role,
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim(),
+        email: form.email || null,
+        location_text: form.location_text || null,
+        city: form.city || null,
+        state: form.state || null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
+        pandit_id: role === "pandit" ? PANDIT_ID : null,
+        verified: true,
+      })
+      .select();
+
+    console.log("Profile insert data:", profileData);
+    console.log("Profile insert error:", profileErr);
+    await refreshProfile();
     if (
       profileErr &&
       !profileErr.message.includes("duplicate") &&
@@ -283,7 +352,7 @@ function SignUpForm({ role }: { role: UserRole }) {
         .eq("id", PANDIT_ID);
     }
 
-    await refreshProfile();
+    // await refreshProfile();
     pushToast(
       role === "pandit" ? "पंडित जी, स्वागत है! 🙏" : "यजमान जी, स्वागत है! 🪔",
     );
