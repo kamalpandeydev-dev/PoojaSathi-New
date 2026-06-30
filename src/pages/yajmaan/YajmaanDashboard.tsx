@@ -93,16 +93,29 @@ export function YajmaanDashboard() {
     <div className="mx-auto max-w-2xl px-4 py-6 animate-fade-in">
       {/* Welcome */}
       <div className="flex items-center justify-between gap-3 mb-5">
-        <div>
-          <p className="text-xs text-saffron-700 font-bold">ॐ हरी ओम् 🪔</p>
-          <h1 className="font-display text-2xl text-maroon-900">
-            {lang === "hi"
-              ? `${profile?.full_name.split(" ")[0]} जी, मेरी पूजाएँ`
-              : `My Poojas`}
-          </h1>
-          <p className="text-xs text-temple-muted mt-0.5">
-            📞 {profile?.phone}
-          </p>
+        <div className="flex items-center gap-3">
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              className="w-12 h-12 rounded-full object-cover border-2 border-saffron-200 shrink-0"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-saffron-100 text-saffron-700 flex items-center justify-center font-display text-lg shrink-0">
+              {profile?.full_name?.charAt(0) || "?"}
+            </div>
+          )}
+          <div>
+            <p className="text-xs text-saffron-700 font-bold">ॐ हरी ओम् 🪔</p>
+            <h1 className="font-display text-2xl text-maroon-900">
+              {lang === "hi"
+                ? `${profile?.full_name.split(" ")[0]} जी, मेरी पूजाएँ`
+                : `My Poojas`}
+            </h1>
+            <p className="text-xs text-temple-muted mt-0.5">
+              📞 {profile?.phone}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button

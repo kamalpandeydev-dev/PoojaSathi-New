@@ -43,7 +43,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div
               className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold max-w-[180px] truncate ${isYajmaan ? "bg-saffron-100 text-saffron-800" : "bg-maroon-100 text-maroon-800"}`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.full_name}
+                  className="w-5 h-5 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+              )}
               <span className="truncate">
                 {profile.full_name.split(" ")[0]}
               </span>

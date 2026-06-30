@@ -1,18 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-// const corsHeaders = {
-//   "Access-Control-Allow-Origin": "*",
-//   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-//   "Access-Control-Allow-Headers":
-//     "Content-Type, Authorization, X-Client-Info, Apikey",
-// };
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Max-Age": "86400",
+    "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
 interface VerifyOtpBody {
   phone: string;
   code: string;
@@ -62,6 +56,62 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // ─── Step 1: Check local otp_verifications table first (dev mode) ────────
+    // The send-otp function stores a locally-generated code when Twilio is
+    // unavailable (e.g. trial account). We verify against this table first.
+    const { data: localOtp } = await supabase
+      .from("otp_verifications")
+      .select("id, otp_code, expires_at, used")
+      .eq("phone", normalized)
+      .eq("purpose", purpose)
+      .eq("used", false)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (localOtp && localOtp.otp_code !== "twilio-managed") {
+      // Dev mode: verify against the locally stored code
+      if (new Date(localOtp.expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "OTP expired. Please request a new one.",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      if (localOtp.otp_code !== code.trim()) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "Incorrect OTP. Please try again.",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+      // Mark as used
+      await supabase
+        .from("otp_verifications")
+        .update({ used: true })
+        .eq("id", localOtp.id);
+      return new Response(JSON.stringify({ ok: true, mode: "dev" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Step 2: Fall back to Twilio Verify API ─────────────────────────────
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const verifyServiceSid = Deno.env.get("TWILIO_VERIFY_SERVICE_SID");
@@ -71,7 +121,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           ok: false,
           error:
-            "Twilio credentials not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_VERIFY_SERVICE_SID as edge function secrets.",
+            "OTP verification failed. No local code found and Twilio not configured.",
         }),
         {
           status: 500,
@@ -80,13 +130,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Call Twilio Verify API to check the OTP
     const twilioUrl = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/VerificationCheck`;
     const body = new URLSearchParams();
-    // body.set("To", normalized);
-    // body.set("Code", code);
-    body.set("To", normalized.trim());
-    body.set("Code", code.trim());
+    body.set("To", normalized);
+    body.set("Code", code);
+
     const twilioRes = await fetch(twilioUrl, {
       method: "POST",
       headers: {
@@ -95,24 +143,14 @@ Deno.serve(async (req: Request) => {
       },
       body: body.toString(),
     });
-    console.log("Verifying Phone:", normalized);
-    console.log("Purpose:", purpose);
-    // const twilioData = await twilioRes.json();
-    const responseText = await twilioRes.text();
-    console.log("Raw Twilio Response:", responseText);
-    const twilioData = JSON.parse(responseText);
-    console.log("========== VERIFY OTP ==========");
-    console.log("Phone:", normalized);
-    console.log("OTP:", code);
-    console.log("Twilio Status Code:", twilioRes.status);
-    console.log("Twilio Response:", JSON.stringify(twilioData));
-    console.log("===============================");
+
+    const twilioData = await twilioRes.json();
 
     if (!twilioRes.ok || twilioData.status !== "approved") {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: twilioData.message || "OTP गलत है या समय सीमा समाप्त हो गई।",
+          error: twilioData.message || "Incorrect OTP or expired.",
         }),
         {
           status: 400,
@@ -122,28 +160,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // Mark the most recent pending record as used for audit
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const { data: pending } = await supabase
-      .from("otp_verifications")
-      .select("id")
-      .eq("phone", normalized)
-      .eq("purpose", purpose)
-      .eq("used", false)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (pending) {
+    if (localOtp) {
       await supabase
         .from("otp_verifications")
         .update({ used: true })
-        .eq("id", pending.id);
+        .eq("id", localOtp.id);
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, mode: "twilio" }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

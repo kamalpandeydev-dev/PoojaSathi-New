@@ -6,21 +6,22 @@ import { useLang } from "../../lib/i18n";
 import { useAuth } from "../../lib/auth";
 import { FloralDivider } from "../../components/SpiritualArt";
 
-const PANDIT_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
-
 export function PanditDashboard() {
   const { lang } = useLang();
-  const { profile: _p } = useAuth();
-  void _p;
+  const { profile } = useAuth();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
+    if (!profile?.pandit_id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { data } = await supabase
       .from("puja_bookings")
       .select("*, pandits(*)")
-      .eq("pandit_id", PANDIT_ID)
+      .eq("pandit_id", profile.pandit_id)
       .order("created_at", { ascending: false });
     setBookings(data ?? []);
     setLoading(false);
@@ -28,7 +29,7 @@ export function PanditDashboard() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [profile?.pandit_id]);
 
   const newBookings = bookings.filter((b) => b.status === "pending");
   const activeBookings = bookings.filter(
@@ -46,15 +47,23 @@ export function PanditDashboard() {
       {/* Pandit header */}
       <div className="rounded-2xl bg-gradient-to-br from-maroon-700 to-maroon-900 p-5 mb-5 text-white">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-white/20 font-deva text-2xl font-bold flex items-center justify-center shrink-0">
-            वि
-          </div>
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              className="w-14 h-14 rounded-full object-cover border-2 border-white/30 shrink-0"
+            />
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-white/20 font-deva text-2xl font-bold flex items-center justify-center shrink-0">
+              {profile?.full_name?.charAt(0) || "पं"}
+            </div>
+          )}
           <div className="flex-1">
             <p className="font-deva text-xs text-maroon-200">ॐ हरी ओम्</p>
-            <h1 className="font-display text-xl">पंडित विजय कुमार मिश्रा</h1>
-            <p className="text-maroon-200 text-xs">
-              शास्त्री एम.ए. · 9899769768
-            </p>
+            <h1 className="font-display text-xl">
+              {profile?.full_name || "Pandit ji"}
+            </h1>
+            <p className="text-maroon-200 text-xs">{profile?.phone || ""}</p>
           </div>
           <button
             onClick={load}

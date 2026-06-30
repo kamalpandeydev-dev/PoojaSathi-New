@@ -1,3 +1,18 @@
+/**
+ * Normalize Indian phone number to 10 digits.
+ * Handles: +91XXXXXXXXXX, 91XXXXXXXXXX, 0XXXXXXXXXX, XXXXXXXXXX
+ * Returns null if invalid.
+ */
+export function normalizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  if (digits.length === 10) return digits;
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+  // For other lengths, take last 10 digits
+  return digits.slice(-10);
+}
+
 export function formatIndianDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-IN", {

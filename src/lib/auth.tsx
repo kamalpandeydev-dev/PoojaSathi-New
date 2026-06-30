@@ -23,6 +23,7 @@ export interface UserProfile {
   latitude: number | null;
   longitude: number | null;
   pandit_id: string | null;
+  avatar_url: string | null;
   verified: boolean;
 }
 
@@ -48,73 +49,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (uid: string) => {
-    console.log("Fetching profile:", uid);
-
-    try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("id", uid)
-        .maybeSingle();
-
-      console.log("Profile data:", data);
-      console.log("Profile error:", error);
-
-      if (error) throw error;
-
-      setProfile(data ?? null);
-    } catch (err) {
-      console.error("fetchProfile failed:", err);
-      setProfile(null);
-    }
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", uid)
+      .maybeSingle();
+    setProfile(data ?? null);
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      try {
-        const {
-          data: { session: s },
-        } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        setSession(s);
-
-        if (s) {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      if (s) {
+        (async () => {
           await fetchProfile(s.user.id);
-        }
-      } catch (e) {
-        console.error("Init auth error:", e);
-      } finally {
-        if (mounted) {
-          console.log("Loading finished");
           setLoading(false);
-        }
+        })();
+      } else {
+        setLoading(false);
       }
-    }
-
-    init();
+    });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, s) => {
-      console.log("AUTH EVENT:", event);
-
+    } = supabase.auth.onAuthStateChange((_ev, s) => {
       setSession(s);
-
       if (s) {
-        await fetchProfile(s.user.id);
+        (async () => {
+          await fetchProfile(s.user.id);
+        })();
       } else {
         setProfile(null);
       }
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
   async function signOut() {

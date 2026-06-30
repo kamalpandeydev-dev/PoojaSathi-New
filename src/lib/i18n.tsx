@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 
@@ -216,6 +217,7 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
+    setGlobalLang(l);
     try {
       localStorage.setItem("ps-lang", l);
     } catch {
@@ -223,6 +225,11 @@ export function LangProvider({ children }: { children: ReactNode }) {
     }
     setShowPicker(false);
   }, []);
+
+  // Keep global lang in sync for non-hook consumers (otp.ts)
+  useEffect(() => {
+    setGlobalLang(lang);
+  }, [lang]);
 
   const t = useCallback(
     (key: TranslationKey): string => {
@@ -243,6 +250,15 @@ export function useLang() {
   const ctx = useContext(LangContext);
   if (!ctx) throw new Error("useLang must be used inside LangProvider");
   return ctx;
+}
+
+// Non-hook version for use outside React components (e.g., in lib/otp.ts)
+let _currentLang: Lang = "hi";
+export function setGlobalLang(l: Lang) {
+  _currentLang = l;
+}
+export function getLang(): Lang {
+  return _currentLang;
 }
 
 // ─── Language picker modal (auto-shows on first visit) ────────────────────────
