@@ -142,7 +142,9 @@ function SignUpForm({ role, onBack }: { role: UserRole; onBack: () => void }) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [devCode, setDevCode] = useState<string>("");
-  const [otpMode, setOtpMode] = useState<"twilio" | "dev" | null>(null);
+  const [otpMode, setOtpMode] = useState<"whatsapp" | "sms" | "dev" | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -423,28 +425,40 @@ function SignUpForm({ role, onBack }: { role: UserRole; onBack: () => void }) {
 
         <OtpBoxes value={otpCode} onChange={setOtpCode} />
 
-        {otpMode === "twilio" && !devCode && (
+        {otpMode === "whatsapp" && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
             <p className="text-xs text-emerald-800 font-semibold">
               {lang === "hi"
-                ? "✅ OTP आपके मोबाइल पर SMS के रूप में भेजा गया है"
-                : "✅ OTP sent to your phone via SMS"}
+                ? "✅ WhatsApp पर OTP भेजा गया है"
+                : "✅ OTP sent via WhatsApp"}
             </p>
           </div>
         )}
 
-        {devCode && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
-            <p className="text-xs text-amber-800 font-semibold">
-              {lang === "hi" ? "डेव मोड — आपका OTP:" : "Dev mode — your OTP:"}{" "}
-              <span className="font-display text-lg tracking-widest text-amber-900">
-                {devCode}
-              </span>
-            </p>
-            <p className="text-[10px] text-amber-700 mt-0.5">
+        {otpMode === "sms" && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+            <p className="text-xs text-emerald-800 font-semibold">
               {lang === "hi"
-                ? "Twilio ट्रायल अकाउंट सिर्फ सत्यापित नंबर पर SMS भेजता है।"
-                : "Twilio trial accounts only send SMS to verified numbers."}
+                ? "✅ SMS पर OTP भेजा गया है"
+                : "✅ OTP sent via SMS"}
+            </p>
+          </div>
+        )}
+
+        {otpMode === "dev" && devCode && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+            <p className="text-xs text-amber-800 font-semibold mb-1">
+              {lang === "hi"
+                ? "🔧 डेवलपमेंट मोड — आपका OTP:"
+                : "🔧 Development mode — your OTP:"}
+            </p>
+            <p className="font-display text-2xl tracking-widest text-amber-900">
+              {devCode}
+            </p>
+            <p className="text-[10px] text-amber-700 mt-1">
+              {lang === "hi"
+                ? "WhatsApp/SMS गेटवे कॉन्फ़िगर नहीं। प्रोडक्शन में OTP मोबाइल पर भेजा जाएगा।"
+                : "No SMS gateway configured. In production, OTP will be sent to mobile."}
             </p>
           </div>
         )}
@@ -909,6 +923,10 @@ function ForgotPassword({ onClose }: { onClose: () => void }) {
   const [showPwd, setShowPwd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [devCode, setDevCode] = useState<string>("");
+  const [otpMode, setOtpMode] = useState<"whatsapp" | "sms" | "dev" | null>(
+    null,
+  );
   const [done, setDone] = useState(false);
 
   async function sendOtp() {
@@ -932,6 +950,8 @@ function ForgotPassword({ onClose }: { onClose: () => void }) {
       );
       return;
     }
+    if (res.devCode) setDevCode(res.devCode);
+    if (res.mode) setOtpMode(res.mode);
     setStep("otp");
   }
 
@@ -968,7 +988,7 @@ function ForgotPassword({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    // 1. Verify OTP via Twilio
+    // 1. Verify OTP via Firebase
     const v = await verifyOtp(
       normalizedPhone,
       otpCode.replace(/\s/g, ""),
@@ -994,11 +1014,7 @@ function ForgotPassword({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    // 3. Update the user's password via Supabase admin reset is not possible
-    //    from the client. Instead, sign in with the recovered email using
-    //    a one-time password update flow: we use updateUser after a fresh
-    //    sign-in is not possible without the old password. So we use the
-    //    secure password reset via a service-role edge function.
+    // 3. Update password via service-role edge function (can't do this from client)
     const res = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password`,
       {
@@ -1103,6 +1119,19 @@ function ForgotPassword({ onClose }: { onClose: () => void }) {
             {lang === "hi" ? "पर OTP भेजा गया" : "- OTP sent"}
           </p>
           <OtpBoxes value={otpCode} onChange={setOtpCode} />
+
+          {otpMode === "dev" && devCode && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+              <p className="text-xs text-amber-800 font-semibold mb-1">
+                {lang === "hi"
+                  ? "🔧 डेवलपमेंट मोड — आपका OTP:"
+                  : "🔧 Development mode — your OTP:"}
+              </p>
+              <p className="font-display text-2xl tracking-widest text-amber-900">
+                {devCode}
+              </p>
+            </div>
+          )}
 
           <Field
             label={

@@ -1,17 +1,16 @@
-import { supabase } from "./supabase";
 import { getLang } from "./i18n";
 
 export type OtpPurpose = "signup" | "login" | "reset";
 
-interface OtpResult {
+export interface OtpResult {
   ok: boolean;
   error?: string;
   devCode?: string;
-  mode?: "twilio" | "dev";
+  mode?: "whatsapp" | "sms" | "dev";
 }
 
-function edgeUrl(slug: string): string {
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${slug}`;
+function edgeUrl(path: string): string {
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${path}`;
 }
 
 function authHeaders(): Record<string, string> {
@@ -43,7 +42,11 @@ export async function requestOtp(
         error: data.error || t("OTP भेजने में विफल।", "Failed to send OTP."),
       };
     }
-    return { ok: true, devCode: data.devCode, mode: data.mode };
+    return {
+      ok: true,
+      devCode: data.devCode,
+      mode: data.mode,
+    };
   } catch {
     return {
       ok: false,
@@ -91,7 +94,6 @@ export async function verifyOtp(
 }
 
 // Used by the forgot-password flow to look up the auth email for a phone number.
-// Phone-only accounts use the synthetic email {digits}@poojasathi.app.
 // Uses edge function to bypass RLS (user is not authenticated during password reset).
 export async function lookupEmailByPhone(
   phone: string,
